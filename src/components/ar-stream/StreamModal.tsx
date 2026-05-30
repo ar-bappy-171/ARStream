@@ -573,7 +573,7 @@ export default function StreamModal({ open, onClose, content, initialUrl }: Stre
             <div className="fixed inset-0 z-40" onClick={() => setShowExternalMenu(false)} />
 
             {/* Dropdown */}
-            <div className="absolute right-0 bottom-full mb-2 z-50 w-72 bg-popover border border-border rounded-xl shadow-2xl overflow-hidden">
+            <div className="absolute right-0 top-full mt-2 z-50 w-72 bg-popover border border-border rounded-xl shadow-2xl overflow-hidden">
               {/* Header */}
               <div className="px-3 py-2.5 bg-ars/5 border-b border-border/50">
                 <div className="flex items-center gap-2">
