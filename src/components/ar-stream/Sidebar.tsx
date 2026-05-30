@@ -27,6 +27,7 @@ import {
   BarChart3,
   CalendarDays,
   Settings,
+  MonitorPlay,
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
@@ -84,6 +85,13 @@ const navigationGroups: { title: string; items: NavItem[] }[] = [
   },
 ];
 
+const streamNavItem: NavItem = {
+  id: 'stream',
+  label: 'Stream Player',
+  icon: MonitorPlay,
+  section: 'stream',
+};
+
 const genreItems: ExpandableNavItem[] = [
   { id: 'action', label: 'Action & Adventure', icon: Swords, section: 'action' },
   { id: 'sci-fi', label: 'Sci-Fi & Fantasy', icon: Rocket, section: 'sci-fi' },
@@ -126,12 +134,18 @@ export default function Sidebar() {
     setSidebarCollapsed,
     mobileSidebarOpen,
     setMobileSidebarOpen,
+    openStream,
   } = useAppStore();
 
   const [genresOpen, setGenresOpen] = useState(false);
   const [animeOpen, setAnimeOpen] = useState(false);
 
   const handleItemClick = (section: string) => {
+    if (section === 'stream') {
+      openStream();
+      setMobileSidebarOpen(false);
+      return;
+    }
     setActiveSection(section);
     setMobileSidebarOpen(false);
   };
@@ -222,7 +236,29 @@ export default function Sidebar() {
 
           <Separator className="my-2" />
 
-          {/* Genres section */}
+          {/* Stream Player */}
+          {(() => {
+            const Icon = streamNavItem.icon;
+            const collapsed = sidebarCollapsed;
+            return (
+              <button
+                onClick={() => handleItemClick('stream')}
+                className={cn(
+                  'flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors duration-150',
+                  'hover:bg-ars/10 hover:text-ars',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                  'text-ars',
+                  collapsed && 'justify-center px-0'
+                )}
+                title={collapsed ? streamNavItem.label : undefined}
+              >
+                <Icon className="size-4 shrink-0" />
+                {!collapsed && <span className="truncate font-semibold">{streamNavItem.label}</span>}
+              </button>
+            );
+          })()}
+
+          <Separator className="my-2" />
           {!sidebarCollapsed ? (
             <Collapsible open={genresOpen} onOpenChange={setGenresOpen}>
               <CollapsibleTrigger asChild>

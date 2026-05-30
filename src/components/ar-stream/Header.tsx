@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback } from 'react';
 import { useTheme } from 'next-themes';
-import { Search, Menu, Sun, Moon, ListChecks, Lock } from 'lucide-react';
+import { Search, Menu, Sun, Moon, ListChecks, Lock, MonitorPlay } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAppStore } from '@/lib/store';
@@ -17,6 +17,7 @@ export default function Header() {
     setMobileSidebarOpen,
     activeSection,
     kidsModeEnabled,
+    openStream,
   } = useAppStore();
 
   const { theme, setTheme } = useTheme();
@@ -209,6 +210,17 @@ export default function Header() {
             aria-label="My Lists"
           >
             <ListChecks className="size-5" />
+          </Button>
+
+          {/* Stream Button */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => openStream()}
+            className="shrink-0 text-ars hover:text-ars hover:bg-ars/10"
+            aria-label="Stream Player"
+          >
+            <MonitorPlay className="size-5" />
           </Button>
         </div>
       </div>

@@ -27,6 +27,7 @@ import {
   Shield,
   ThumbsUp,
   Apple,
+  MonitorPlay,
 } from 'lucide-react';
 import {
   Dialog,
@@ -40,6 +41,7 @@ import { ContentCard } from '@/components/ar-stream/ContentCard';
 import { PersonModal } from '@/components/ar-stream/PersonModal';
 import EpisodeTracker from '@/components/ar-stream/EpisodeTracker';
 import type { ContentDetail, ContentItem, SeasonInfo } from '@/lib/store';
+import { useAppStore } from '@/lib/store';
 import type { WatchListCategory } from '@/lib/storage';
 
 // ─── Image URL helpers ──────────────────────────────────────────────
@@ -258,6 +260,7 @@ export function DetailModal({
   const [similar, setSimilar] = useState<ContentItem[]>([]);
   const [showTrailer, setShowTrailer] = useState(false);
   const [showListDropdown, setShowListDropdown] = useState(false);
+  const { openStream } = useAppStore();
 
   // PersonModal state
   const [selectedPersonId, setSelectedPersonId] = useState<number | null>(null);
@@ -653,6 +656,14 @@ export function DetailModal({
                   >
                     <Play className="h-4 w-4 fill-current" />
                     {trailerKey ? 'Watch Trailer' : 'Watch Now'}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="border-ars/40 text-ars hover:bg-ars/10 gap-1.5 font-semibold"
+                    onClick={() => openStream(displayData)}
+                  >
+                    <MonitorPlay className="h-4 w-4" />
+                    Stream
                   </Button>
                   {/* Add to List Dropdown */}
                   <div className="relative">

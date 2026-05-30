@@ -44,6 +44,7 @@ import ActivityTimeline from '@/components/ar-stream/ActivityTimeline';
 import ExportImportSection from '@/components/ar-stream/ExportImportSection';
 import { AIRecommendations, FullRecommendationsSection } from '@/components/ar-stream/AIRecommendations';
 import PageTransition from '@/components/ar-stream/PageTransition';
+import StreamModal from '@/components/ar-stream/StreamModal';
 
 // ─── TMDB Result Mapper ──────────────────────────────────────────────
 function mapTmdbResult(item: Record<string, unknown>, type: 'movie' | 'tv'): ContentItem {
@@ -252,6 +253,9 @@ export default function Home() {
     pipTrailerKey,
     pipTrailerTitle,
     kidsModeEnabled,
+    streamModalOpen,
+    streamContent,
+    streamUrl,
     setActiveSection,
     setSelectedContent,
     setDetailModalOpen,
@@ -263,6 +267,7 @@ export default function Home() {
     setSectionHasMore,
     setPipTrailer,
     setKidsModeEnabled,
+    closeStream,
   } = useAppStore();
 
   // Initialize state from localStorage AFTER hydration to prevent mismatch
@@ -721,6 +726,14 @@ export default function Home() {
           onClose={() => setPipTrailer(null, null)}
         />
       )}
+
+      {/* Stream Player Modal */}
+      <StreamModal
+        open={streamModalOpen}
+        onClose={closeStream}
+        content={streamContent}
+        initialUrl={streamUrl || undefined}
+      />
 
       {/* PWA Install Prompt */}
       <InstallPrompt />

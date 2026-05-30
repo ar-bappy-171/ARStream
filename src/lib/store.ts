@@ -85,6 +85,11 @@ interface AppState {
   // Parental Controls State
   kidsModeEnabled: boolean;
 
+  // Stream Player State
+  streamModalOpen: boolean;
+  streamContent: ContentItem | null;
+  streamUrl: string | null;
+
   // Actions
   setActiveSection: (section: ActiveSection) => void;
   setSidebarCollapsed: (collapsed: boolean) => void;
@@ -103,6 +108,8 @@ interface AppState {
   setSectionHasMore: (sectionId: string, hasMore: boolean) => void;
   setPipTrailer: (key: string | null, title: string | null) => void;
   setKidsModeEnabled: (enabled: boolean) => void;
+  openStream: (content?: ContentItem | null, url?: string | null) => void;
+  closeStream: () => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -132,6 +139,11 @@ export const useAppStore = create<AppState>((set) => ({
 
   // Parental Controls State
   kidsModeEnabled: false,
+
+  // Stream Player State
+  streamModalOpen: false,
+  streamContent: null,
+  streamUrl: null,
 
   // Actions
   setActiveSection: (section) => set({ activeSection: section, mobileSidebarOpen: false }),
@@ -181,4 +193,8 @@ export const useAppStore = create<AppState>((set) => ({
     set({ pipTrailerKey: key, pipTrailerTitle: title }),
   setKidsModeEnabled: (enabled) =>
     set({ kidsModeEnabled: enabled }),
+  openStream: (content, url) =>
+    set({ streamModalOpen: true, streamContent: content || null, streamUrl: url || null }),
+  closeStream: () =>
+    set({ streamModalOpen: false, streamContent: null, streamUrl: null }),
 }));

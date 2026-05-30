@@ -2,8 +2,9 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import Image from 'next/image';
-import { Star, Heart, Play, Eye, ClipboardList, CheckCircle } from 'lucide-react';
+import { Star, Heart, Play, Eye, ClipboardList, CheckCircle, MonitorPlay } from 'lucide-react';
 import type { ContentItem } from '@/lib/store';
+import { useAppStore } from '@/lib/store';
 import type { WatchListCategory } from '@/lib/storage';
 import { TrailerPreview } from './TrailerPreview';
 
@@ -87,6 +88,7 @@ export function ContentCard({ item, onClick, onWatchListToggle, watchListStatus 
   const dropdownRef = useRef<HTMLDivElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { openStream } = useAppStore();
 
   // Trailer preview state
   const [showPreview, setShowPreview] = useState(false);
@@ -249,11 +251,21 @@ export function ContentCard({ item, onClick, onWatchListToggle, watchListStatus 
           </div>
 
           {/* Hover Overlay with Play Button */}
-          <div className="card-overlay absolute inset-0 bg-black/60 flex flex-col items-center justify-center opacity-0 transition-opacity duration-300">
-            <div className="w-12 h-12 rounded-full bg-ars flex items-center justify-center shadow-lg hover:scale-110 transition-transform">
+          <div className="card-overlay absolute inset-0 bg-black/60 flex flex-col items-center justify-center gap-2 opacity-0 transition-opacity duration-300">
+            <button
+              onClick={(e) => { e.stopPropagation(); onClick?.(item); }}
+              className="w-12 h-12 rounded-full bg-ars flex items-center justify-center shadow-lg hover:scale-110 transition-transform"
+            >
               <Play className="h-5 w-5 text-white fill-white ml-0.5" />
-            </div>
-            <p className="text-white text-xs mt-2 font-medium">Watch Now</p>
+            </button>
+            <p className="text-white text-xs font-medium">Details</p>
+            <button
+              onClick={(e) => { e.stopPropagation(); openStream(item); }}
+              className="mt-1 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/20 hover:bg-ars/80 backdrop-blur-sm text-white text-xs font-medium transition-colors"
+            >
+              <MonitorPlay className="h-3.5 w-3.5" />
+              Stream
+            </button>
           </div>
         </div>
 
