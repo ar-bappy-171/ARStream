@@ -200,3 +200,36 @@ Stage Summary:
 - Features: quality switching, speed control, PiP, fullscreen, keyboard shortcuts, stream history
 - 5 sample test streams included for immediate testing
 - Lint clean (0 errors, 0 warnings), dev server running, page renders 200 OK
+
+---
+Task ID: 8
+Agent: Main Coordinator
+Task: Make Stream button auto-play movies instead of asking for URL
+
+Work Log:
+- Completely rewrote StreamModal to auto-play content when Stream button is clicked
+- Added 4 embed sources that use TMDB IDs to auto-generate streaming URLs:
+  - VidSrc.xyz (primary)
+  - VidSrc.to
+  - MultiEmbed
+  - 2Embed
+- When user clicks "Stream" on a movie card → modal opens and immediately loads embedded player
+- Added iframe-based embedded player (primary mode) for TMDB content
+- Kept direct URL video player (HLS.js) as secondary mode for manual URLs
+- Added source switcher: prev/next buttons to cycle through embed sources if one doesn't work
+- Added reload button for the iframe player
+- Added season/episode selector for TV shows and anime content
+- Fetches season info from TMDB API to populate max seasons/episodes
+- Content info banner with poster, title, type badge, and "Play" button
+- Quick-play source grid showing all available embed sources
+- "Custom URL" section as advanced option for direct video URLs
+- Mode toggle (Embed/URL) in header when content is playing
+- Stream history preserved in localStorage
+- Lint clean (0 errors, 0 warnings)
+
+Stage Summary:
+- Stream button now auto-plays movies/shows when clicked - no URL input needed
+- 4 embed sources with easy switching if one doesn't work
+- TV shows support season/episode navigation
+- Manual URL input still available as advanced option
+- Seamless one-click streaming experience
