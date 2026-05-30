@@ -49,7 +49,7 @@ export default function RootLayout({
         {/* Apply color theme BEFORE React hydration to prevent flash */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('ar-stream-color-theme');if(t&&t!=='default'){document.documentElement.setAttribute('data-theme',t)}}catch(e){}/* Force favicon refresh */try{var links=document.querySelectorAll('link[rel*="icon"]');links.forEach(function(l){var u=l.href.split('?')[0]+'?v='+Date.now();l.href=u})}catch(e){}})()`,
+            __html: `(function(){try{var t=localStorage.getItem('ar-stream-color-theme');if(t&&t!=='default'){document.documentElement.setAttribute('data-theme',t)}}catch(e){}/* Force favicon refresh */try{var links=document.querySelectorAll('link[rel*="icon"]');links.forEach(function(l){var u=l.href.split('?')[0]+'?v='+Date.now();l.href=u})}catch(e){}/* Register Service Worker for PWA */if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('/sw.js').then(function(reg){console.log('SW registered:',reg.scope)}).catch(function(err){console.log('SW registration failed:',err)})})}})()`,
           }}
         />
       </head>

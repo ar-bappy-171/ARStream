@@ -6,7 +6,10 @@
   "display": "standalone",
   "background_color": "#1a1a2e",
   "theme_color": "#e85d04",
-  "orientation": "portrait-primary",
+  "orientation": "any",
+  "scope": "/",
+  "prefer_related_applications": false,
+  "categories": ["entertainment", "lifestyle"],
   "icons": [
     {
       "src": "/logo.svg",
@@ -23,7 +26,7 @@
     {
       "src": "/android-chrome-512x512.png",
       "sizes": "512x512",
-      "type="image/png",
+      "type": "image/png",
       "purpose": "any"
     },
     {
@@ -31,6 +34,20 @@
       "sizes": "1024x1024",
       "type": "image/png",
       "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Search",
+      "short_name": "Search",
+      "url": "/?section=search",
+      "icons": [{ "src": "/logo.svg", "sizes": "any", "type": "image/svg+xml" }]
+    },
+    {
+      "name": "My Lists",
+      "short_name": "Lists",
+      "url": "/?section=my-lists",
+      "icons": [{ "src": "/logo.svg", "sizes": "any", "type": "image/svg+xml" }]
     }
   ]
 }
