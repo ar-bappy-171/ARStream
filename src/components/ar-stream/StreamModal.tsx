@@ -17,9 +17,13 @@ import {
   ChevronRight,
   RefreshCw,
   MonitorPlay,
-  List,
-  Clock,
-  Settings,
+  Smartphone,
+  Copy,
+  Share2,
+  Check,
+  Chrome,
+  Tv2,
+  CheckCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -66,6 +70,68 @@ const EMBED_SOURCES: EmbedSource[] = [
     name: '2Embed',
     getMovieUrl: (id) => `https://www.2embed.cc/embed/${id}`,
     getTvUrl: (id, s, e) => `https://www.2embed.cc/embedtv/${id}&s=${s}&e=${e}`,
+  },
+];
+
+// ─── External Player Definitions ─────────────────────────────────────
+
+interface ExternalPlayer {
+  id: string;
+  name: string;
+  icon: React.ComponentType<{ className?: string }>;
+  packageName: string;  // Android package name for intent
+  description: string;
+  color: string;  // Tailwind color class
+}
+
+const EXTERNAL_PLAYERS: ExternalPlayer[] = [
+  {
+    id: 'mx-player',
+    name: 'MX Player',
+    icon: Play,
+    packageName: 'com.mxtech.videoplayer.ad',
+    description: 'Popular Android video player with HW accel',
+    color: 'text-blue-500',
+  },
+  {
+    id: 'mx-player-pro',
+    name: 'MX Player Pro',
+    icon: Play,
+    packageName: 'com.mxtech.videoplayer.pro',
+    description: 'Ad-free version of MX Player',
+    color: 'text-blue-600',
+  },
+  {
+    id: 'vlc',
+    name: 'VLC',
+    icon: Tv2,
+    packageName: 'org.videolan.vlc',
+    description: 'Cross-platform multimedia player',
+    color: 'text-orange-500',
+  },
+  {
+    id: 'just-player',
+    name: 'Just Player',
+    icon: MonitorPlay,
+    packageName: 'com.brouken.player',
+    description: 'Lightweight ExoPlayer-based player',
+    color: 'text-green-500',
+  },
+  {
+    id: 's-player',
+    name: 'S Player',
+    icon: Film,
+    packageName: 'com.panaceasoft.splayer',
+    description: 'Simple & clean video player',
+    color: 'text-purple-500',
+  },
+  {
+    id: 'mpv',
+    name: 'mpv',
+    icon: Play,
+    packageName: 'is.xyz.mpv',
+    description: 'Minimalist media player',
+    color: 'text-gray-400',
   },
 ];
 
@@ -116,6 +182,10 @@ function isHlsUrl(url: string): boolean {
   return url.includes('.m3u8') || url.includes('m3u8');
 }
 
+function isDirectVideoUrl(url: string): boolean {
+  return /\.(mp4|webm|mkv|avi|mov|m3u8)(\?|$)/i.test(url) || isHlsUrl(url);
+}
+
 function getTypeIcon(type: string) {
   switch (type) {
     case 'movie': return Film;
@@ -126,6 +196,102 @@ function getTypeIcon(type: string) {
 }
 
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p';
+
+// ─── External Player Launch Helpers ─────────────────────────────────
+
+/**
+ * Generate an Android intent URL to open a video URL in a specific player.
+ * Format: intent://url#Intent;scheme=https;package=com.example.player;end
+ */
+function getAndroidIntentUrl(videoUrl: string, packageName: string): string {
+  const encodedUrl = encodeURIComponent(videoUrl);
+  // Use the intent scheme with the URL as data
+  return `intent:${videoUrl}#Intent;scheme=${new URL(videoUrl).protocol.replace(':', '')};package=${packageName};S.title=${encodedUrl};end`;
+}
+
+/**
+ * Generate a VLC-specific URL scheme
+ */
+function getVlcUrl(videoUrl: string): string {
+  return `vlc://${videoUrl}`;
+}
+
+/**
+ * Open URL in external player
+ */
+function openInExternalPlayer(videoUrl: string, player: ExternalPlayer): void {
+  let launchUrl: string;
+
+  if (player.id === 'vlc') {
+    // VLC uses its own URL scheme
+    launchUrl = getVlcUrl(videoUrl);
+  } else {
+    // Use Android intent URL for other players
+    launchUrl = getAndroidIntentUrl(videoUrl, player.packageName);
+  }
+
+  // Try to open the URL - on Android this will launch the app via intent
+  const link = document.createElement('a');
+  link.href = launchUrl;
+  link.click();
+
+  // Fallback: also try window.open for browsers that support it
+  // Some Android browsers handle intent:// URLs via window.location
+  try {
+    window.open(launchUrl, '_blank');
+  } catch {
+    // Silently fail - the link click should handle it
+  }
+}
+
+/**
+ * Open URL in system browser (for embed URLs that can't be played in native players)
+ */
+function openInBrowser(url: string): void {
+  window.open(url, '_blank', 'noopener,noreferrer');
+}
+
+/**
+ * Copy URL to clipboard
+ */
+async function copyToClipboard(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    // Fallback for older browsers
+    try {
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+}
+
+/**
+ * Share URL using Web Share API (works great on mobile)
+ */
+async function shareUrl(url: string, title: string): Promise<boolean> {
+  if (!navigator.share) return false;
+  try {
+    await navigator.share({
+      title,
+      text: `Watch ${title} on AR-Stream`,
+      url,
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 // ─── Props ──────────────────────────────────────────────────────────
 
@@ -161,8 +327,16 @@ export default function StreamModal({ open, onClose, content, initialUrl }: Stre
   const [history, setHistory] = useState<StreamHistoryEntry[]>([]);
   const [showHistory, setShowHistory] = useState(false);
 
+  // External player UI
+  const [showExternalMenu, setShowExternalMenu] = useState(false);
+  const [copiedUrl, setCopiedUrl] = useState(false);
+
   // Track if we've auto-started
   const autoStartedRef = useRef(false);
+
+  // Get the current active URL for external player use
+  const currentUrl = playerMode === 'embed' ? activeEmbedUrl : activeDirectUrl;
+  const isDirectStream = currentUrl ? isDirectVideoUrl(currentUrl) : false;
 
   // ─── Get embed URL for current content ───────────────────────────
   const getEmbedUrl = useCallback((sourceIdx: number = 0): string | null => {
@@ -329,6 +503,8 @@ export default function StreamModal({ open, onClose, content, initialUrl }: Stre
         setMaxSeasons(1);
         setMaxEpisodes(1);
         setIsLoading(true);
+        setShowExternalMenu(false);
+        setCopiedUrl(false);
       }, 0);
     }
   }, [open]);
@@ -344,8 +520,175 @@ export default function StreamModal({ open, onClose, content, initialUrl }: Stre
     setHistory(updated);
   }, []);
 
+  // ─── External Player Handlers ────────────────────────────────────
+  const handleCopyUrl = useCallback(async () => {
+    if (!currentUrl) return;
+    const success = await copyToClipboard(currentUrl);
+    if (success) {
+      setCopiedUrl(true);
+      setTimeout(() => setCopiedUrl(false), 2000);
+    }
+  }, [currentUrl]);
+
+  const handleShare = useCallback(async () => {
+    if (!currentUrl) return;
+    await shareUrl(currentUrl, activeTitle);
+  }, [currentUrl, activeTitle]);
+
+  const handleOpenInPlayer = useCallback((player: ExternalPlayer) => {
+    if (!currentUrl) return;
+    openInExternalPlayer(currentUrl, player);
+    setShowExternalMenu(false);
+  }, [currentUrl]);
+
+  const handleOpenInBrowser = useCallback(() => {
+    if (!currentUrl) return;
+    openInBrowser(currentUrl);
+    setShowExternalMenu(false);
+  }, [currentUrl]);
+
   // ─── Render ──────────────────────────────────────────────────────
   const isPlaying = playerMode === 'embed' ? !!activeEmbedUrl : playerMode === 'direct' ? !!activeDirectUrl : false;
+
+  // ─── External Player Dropdown Component ──────────────────────────
+  const renderExternalPlayerMenu = () => {
+    if (!currentUrl) return null;
+
+    return (
+      <div className="relative">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setShowExternalMenu(!showExternalMenu)}
+          className="h-7 text-xs px-2 gap-1 border-ars/30 text-ars hover:bg-ars/10"
+        >
+          <Smartphone className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">External</span>
+          <ChevronRight className={`h-3 w-3 transition-transform ${showExternalMenu ? 'rotate-90' : ''}`} />
+        </Button>
+
+        {showExternalMenu && (
+          <>
+            {/* Backdrop */}
+            <div className="fixed inset-0 z-40" onClick={() => setShowExternalMenu(false)} />
+
+            {/* Dropdown */}
+            <div className="absolute right-0 bottom-full mb-2 z-50 w-72 bg-popover border border-border rounded-xl shadow-2xl overflow-hidden">
+              {/* Header */}
+              <div className="px-3 py-2.5 bg-ars/5 border-b border-border/50">
+                <div className="flex items-center gap-2">
+                  <Smartphone className="h-4 w-4 text-ars" />
+                  <span className="text-sm font-semibold text-foreground">Open in External Player</span>
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-0.5">
+                  {isDirectStream
+                    ? 'Direct stream — compatible with all players'
+                    : 'Embed page — best viewed in browser'}
+                </p>
+              </div>
+
+              {/* Direct Video Players (only show for direct video URLs) */}
+              {isDirectStream && (
+                <div className="py-1">
+                  <p className="px-3 py-1 text-[10px] font-semibold uppercase text-muted-foreground tracking-wider">
+                    Video Players
+                  </p>
+                  {EXTERNAL_PLAYERS.map((player) => {
+                    const PlayerIcon = player.icon;
+                    return (
+                      <button
+                        key={player.id}
+                        onClick={() => handleOpenInPlayer(player)}
+                        className="w-full text-left px-3 py-2 flex items-center gap-3 hover:bg-ars/5 transition-colors"
+                      >
+                        <div className={`p-1.5 rounded-md bg-muted ${player.color}`}>
+                          <PlayerIcon className="h-3.5 w-3.5" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-foreground">{player.name}</p>
+                          <p className="text-[10px] text-muted-foreground truncate">{player.description}</p>
+                        </div>
+                        <ExternalLink className="h-3 w-3 text-muted-foreground shrink-0" />
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Browser & System Options */}
+              <div className="py-1 border-t border-border/50">
+                <p className="px-3 py-1 text-[10px] font-semibold uppercase text-muted-foreground tracking-wider">
+                  {isDirectStream ? 'System' : 'Recommended'}
+                </p>
+
+                {/* Open in Browser */}
+                <button
+                  onClick={handleOpenInBrowser}
+                  className="w-full text-left px-3 py-2 flex items-center gap-3 hover:bg-ars/5 transition-colors"
+                >
+                  <div className="p-1.5 rounded-md bg-muted text-sky-500">
+                    <Chrome className="h-3.5 w-3.5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground">Open in Browser</p>
+                    <p className="text-[10px] text-muted-foreground">
+                      {isDirectStream ? 'Play in web browser' : 'Best for embed streams'}
+                    </p>
+                  </div>
+                  <ExternalLink className="h-3 w-3 text-muted-foreground shrink-0" />
+                </button>
+
+                {/* Copy URL */}
+                <button
+                  onClick={handleCopyUrl}
+                  className="w-full text-left px-3 py-2 flex items-center gap-3 hover:bg-ars/5 transition-colors"
+                >
+                  <div className="p-1.5 rounded-md bg-muted text-emerald-500">
+                    {copiedUrl ? (
+                      <CheckCircle className="h-3.5 w-3.5" />
+                    ) : (
+                      <Copy className="h-3.5 w-3.5" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground">
+                      {copiedUrl ? 'Copied!' : 'Copy URL'}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground truncate max-w-[180px]">
+                      {copiedUrl ? 'Paste in any player' : currentUrl}
+                    </p>
+                  </div>
+                </button>
+
+                {/* Share */}
+                {typeof navigator !== 'undefined' && navigator.share && (
+                  <button
+                    onClick={handleShare}
+                    className="w-full text-left px-3 py-2 flex items-center gap-3 hover:bg-ars/5 transition-colors"
+                  >
+                    <div className="p-1.5 rounded-md bg-muted text-amber-500">
+                      <Share2 className="h-3.5 w-3.5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground">Share</p>
+                      <p className="text-[10px] text-muted-foreground">Send to another app</p>
+                    </div>
+                  </button>
+                )}
+              </div>
+
+              {/* URL Preview */}
+              <div className="px-3 py-2 bg-muted/30 border-t border-border/50">
+                <p className="text-[9px] text-muted-foreground font-mono break-all leading-relaxed">
+                  {currentUrl}
+                </p>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    );
+  };
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
@@ -391,6 +734,9 @@ export default function StreamModal({ open, onClose, content, initialUrl }: Stre
                 </Button>
               </div>
             )}
+
+            {/* External Player Button - always show when playing */}
+            {isPlaying && renderExternalPlayerMenu()}
 
             {isPlaying && (
               <Button
@@ -443,7 +789,7 @@ export default function StreamModal({ open, onClose, content, initialUrl }: Stre
 
               {/* Controls Bar */}
               <div className="px-3 sm:px-4 py-2.5 bg-card/80 border-t border-border/30 space-y-2">
-                {/* Source Switcher + Season/Episode */}
+                {/* Source Switcher + Season/Episode + External Player */}
                 <div className="flex items-center gap-2 flex-wrap">
                   {/* Source indicator */}
                   <Badge variant="outline" className="text-[10px] gap-1">
@@ -484,9 +830,45 @@ export default function StreamModal({ open, onClose, content, initialUrl }: Stre
                     <RefreshCw className="h-3.5 w-3.5" />
                   </button>
 
+                  {/* External Player Quick Actions */}
+                  <div className="flex items-center gap-1 ml-auto">
+                    {/* Quick copy */}
+                    <button
+                      onClick={handleCopyUrl}
+                      className="p-1.5 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                      title={copiedUrl ? 'URL Copied!' : 'Copy stream URL'}
+                    >
+                      {copiedUrl ? (
+                        <Check className="h-3.5 w-3.5 text-emerald-500" />
+                      ) : (
+                        <Copy className="h-3.5 w-3.5" />
+                      )}
+                    </button>
+
+                    {/* Quick open in browser */}
+                    <button
+                      onClick={handleOpenInBrowser}
+                      className="p-1.5 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                      title="Open in browser"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </button>
+
+                    {/* Quick share (mobile) */}
+                    {typeof navigator !== 'undefined' && navigator.share && (
+                      <button
+                        onClick={handleShare}
+                        className="p-1.5 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                        title="Share"
+                      >
+                        <Share2 className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
+
                   {/* Season/Episode selector for TV/Anime */}
                   {(content?.type === 'tv' || content?.type === 'anime') && (
-                    <div className="flex items-center gap-2 ml-auto">
+                    <div className="flex items-center gap-2 w-full sm:w-auto sm:ml-2">
                       <div className="flex items-center gap-1">
                         <span className="text-[10px] text-muted-foreground">S</span>
                         <button
@@ -539,7 +921,7 @@ export default function StreamModal({ open, onClose, content, initialUrl }: Stre
                   )}
                 </div>
 
-                {/* Content info */}
+                {/* Content info + External Player CTA */}
                 {content && (
                   <div className="flex items-center gap-2">
                     {content.posterPath && (
@@ -555,17 +937,26 @@ export default function StreamModal({ open, onClose, content, initialUrl }: Stre
                         />
                       </div>
                     )}
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <p className="text-xs font-medium text-foreground truncate">{content.title}</p>
                       <div className="flex items-center gap-2">
                         <Badge className="text-[8px] h-4 px-1" variant="secondary">
                           {content.type === 'movie' ? 'Movie' : content.type === 'tv' ? 'TV' : 'Anime'}
                         </Badge>
                         <span className="text-[10px] text-muted-foreground">
-                          If the video doesn&apos;t load, try switching sources →
+                          Switch sources or open externally →
                         </span>
                       </div>
                     </div>
+
+                    {/* Mobile-friendly External Player Quick Button */}
+                    <button
+                      onClick={() => setShowExternalMenu(true)}
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-ars/10 border border-ars/20 text-ars hover:bg-ars/20 transition-colors shrink-0 sm:hidden"
+                    >
+                      <Smartphone className="h-3.5 w-3.5" />
+                      <span className="text-[11px] font-medium">Play in...</span>
+                    </button>
                   </div>
                 )}
               </div>
@@ -582,7 +973,7 @@ export default function StreamModal({ open, onClose, content, initialUrl }: Stre
                 autoPlay
                 onEnded={() => {}}
               />
-              <div className="px-4 py-2 bg-card/30 border-t border-border/30">
+              <div className="px-4 py-2.5 bg-card/30 border-t border-border/30">
                 <div className="flex items-center gap-3">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-foreground truncate">{activeTitle}</p>
@@ -591,6 +982,46 @@ export default function StreamModal({ open, onClose, content, initialUrl }: Stre
                   <Badge variant="secondary" className="text-[10px]">
                     {isHlsUrl(activeDirectUrl) ? 'HLS' : 'Direct'}
                   </Badge>
+
+                  {/* External Player Quick Actions for Direct Mode */}
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={handleCopyUrl}
+                      className="p-1.5 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                      title={copiedUrl ? 'URL Copied!' : 'Copy URL for external player'}
+                    >
+                      {copiedUrl ? (
+                        <Check className="h-4 w-4 text-emerald-500" />
+                      ) : (
+                        <Copy className="h-4 w-4" />
+                      )}
+                    </button>
+                    <button
+                      onClick={() => {
+                        // Quick open in MX Player (most popular)
+                        if (currentUrl) {
+                          openInExternalPlayer(currentUrl, EXTERNAL_PLAYERS[0]);
+                        }
+                      }}
+                      className="flex items-center gap-1 px-2 py-1 rounded-md bg-blue-500/10 border border-blue-500/20 text-blue-500 hover:bg-blue-500/20 transition-colors"
+                      title="Open in MX Player"
+                    >
+                      <Smartphone className="h-3.5 w-3.5" />
+                      <span className="text-[10px] font-medium">MX</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (currentUrl) {
+                          openInExternalPlayer(currentUrl, EXTERNAL_PLAYERS.find(p => p.id === 'vlc')!);
+                        }
+                      }}
+                      className="flex items-center gap-1 px-2 py-1 rounded-md bg-orange-500/10 border border-orange-500/20 text-orange-500 hover:bg-orange-500/20 transition-colors"
+                      title="Open in VLC"
+                    >
+                      <Smartphone className="h-3.5 w-3.5" />
+                      <span className="text-[10px] font-medium">VLC</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -654,7 +1085,7 @@ export default function StreamModal({ open, onClose, content, initialUrl }: Stre
                           }`}
                         >
                           <Play className={`h-4 w-4 shrink-0 ${idx === currentSourceIndex && activeEmbedUrl ? 'text-ars fill-ars' : 'text-ars'}`} />
-                          <div className="min-w-0">
+                          <div className="min-w-0 flex-1">
                             <p className="text-sm font-medium text-foreground">{source.name}</p>
                             <p className="text-[10px] text-muted-foreground">
                               {content.type === 'movie' ? 'Movie' : `S${season}E${episode}`} — TMDB #{content.id}
@@ -663,6 +1094,58 @@ export default function StreamModal({ open, onClose, content, initialUrl }: Stre
                         </button>
                       ))}
                     </div>
+                  </div>
+                )}
+
+                {/* External Player Quick Access */}
+                {content && (
+                  <div className="space-y-3">
+                    <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                      <Smartphone className="h-4 w-4 text-ars" />
+                      External Players
+                      <span className="text-[10px] text-muted-foreground font-normal">(mobile)</span>
+                    </h3>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {EXTERNAL_PLAYERS.slice(0, 4).map((player) => {
+                        const PlayerIcon = player.icon;
+                        return (
+                          <button
+                            key={player.id}
+                            onClick={() => {
+                              const url = getEmbedUrl(0);
+                              if (url) openInExternalPlayer(url, player);
+                            }}
+                            className={`flex items-center gap-2 p-2.5 rounded-lg border border-border/50 bg-card/30 hover:bg-ars/5 hover:border-ars/30 transition-colors text-left`}
+                          >
+                            <div className={`p-1 rounded ${player.color} bg-muted`}>
+                              <PlayerIcon className="h-3 w-3" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-xs font-medium text-foreground truncate">{player.name}</p>
+                              <p className="text-[9px] text-muted-foreground truncate">Open in app</p>
+                            </div>
+                          </button>
+                        );
+                      })}
+                      <button
+                        onClick={() => {
+                          const url = getEmbedUrl(0);
+                          if (url) openInBrowser(url);
+                        }}
+                        className="flex items-center gap-2 p-2.5 rounded-lg border border-border/50 bg-card/30 hover:bg-ars/5 hover:border-ars/30 transition-colors text-left"
+                      >
+                        <div className="p-1 rounded bg-muted text-sky-500">
+                          <Chrome className="h-3 w-3" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-medium text-foreground truncate">Browser</p>
+                          <p className="text-[9px] text-muted-foreground truncate">Open in browser</p>
+                        </div>
+                      </button>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">
+                      External players work best with direct video URLs (MP4, M3U8). Embed sources open in browser.
+                    </p>
                   </div>
                 )}
 
@@ -701,8 +1184,36 @@ export default function StreamModal({ open, onClose, content, initialUrl }: Stre
                   {urlError && (
                     <p className="text-xs text-red-500">{urlError}</p>
                   )}
+
+                  {/* Quick external player buttons for direct URLs */}
+                  {streamUrl.trim() && isDirectVideoUrl(streamUrl.trim()) && (
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-[10px] text-muted-foreground">Open in:</span>
+                      {EXTERNAL_PLAYERS.slice(0, 3).map((player) => {
+                        const PlayerIcon = player.icon;
+                        return (
+                          <button
+                            key={player.id}
+                            onClick={() => openInExternalPlayer(streamUrl.trim(), player)}
+                            className={`flex items-center gap-1 px-2 py-1 rounded-md border border-border/50 hover:bg-ars/5 hover:border-ars/30 transition-colors text-[10px] font-medium ${player.color}`}
+                          >
+                            <PlayerIcon className="h-3 w-3" />
+                            {player.name}
+                          </button>
+                        );
+                      })}
+                      <button
+                        onClick={() => openInBrowser(streamUrl.trim())}
+                        className="flex items-center gap-1 px-2 py-1 rounded-md border border-border/50 hover:bg-ars/5 hover:border-ars/30 transition-colors text-[10px] font-medium text-sky-500"
+                      >
+                        <Chrome className="h-3 w-3" />
+                        Browser
+                      </button>
+                    </div>
+                  )}
+
                   <p className="text-[10px] text-muted-foreground">
-                    Supports MP4, WebM, and HLS/M3U8 streams. Use this for direct video URLs.
+                    Supports MP4, WebM, and HLS/M3U8 streams. Direct URLs work with external players.
                   </p>
                 </div>
 
