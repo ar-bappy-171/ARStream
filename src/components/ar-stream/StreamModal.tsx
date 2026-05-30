@@ -587,33 +587,36 @@ export default function StreamModal({ open, onClose, content, initialUrl }: Stre
                 </p>
               </div>
 
-              {/* Direct Video Players (only show for direct video URLs) */}
-              {isDirectStream && (
-                <div className="py-1">
-                  <p className="px-3 py-1 text-[10px] font-semibold uppercase text-muted-foreground tracking-wider">
-                    Video Players
+              {/* Video Players — always show, with compatibility note for embed URLs */}
+              <div className="py-1">
+                <p className="px-3 py-1 text-[10px] font-semibold uppercase text-muted-foreground tracking-wider">
+                  Video Players
+                </p>
+                {!isDirectStream && (
+                  <p className="px-3 pb-1 text-[9px] text-amber-500/80">
+                    ⚠ Embed URL — some players may not support this. Try Browser or Copy URL if a player fails.
                   </p>
-                  {EXTERNAL_PLAYERS.map((player) => {
-                    const PlayerIcon = player.icon;
-                    return (
-                      <button
-                        key={player.id}
-                        onClick={() => handleOpenInPlayer(player)}
-                        className="w-full text-left px-3 py-2 flex items-center gap-3 hover:bg-ars/5 transition-colors"
-                      >
-                        <div className={`p-1.5 rounded-md bg-muted ${player.color}`}>
-                          <PlayerIcon className="h-3.5 w-3.5" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-foreground">{player.name}</p>
-                          <p className="text-[10px] text-muted-foreground truncate">{player.description}</p>
-                        </div>
-                        <ExternalLink className="h-3 w-3 text-muted-foreground shrink-0" />
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
+                )}
+                {EXTERNAL_PLAYERS.map((player) => {
+                  const PlayerIcon = player.icon;
+                  return (
+                    <button
+                      key={player.id}
+                      onClick={() => handleOpenInPlayer(player)}
+                      className="w-full text-left px-3 py-2 flex items-center gap-3 hover:bg-ars/5 transition-colors"
+                    >
+                      <div className={`p-1.5 rounded-md bg-muted ${player.color}`}>
+                        <PlayerIcon className="h-3.5 w-3.5" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground">{player.name}</p>
+                        <p className="text-[10px] text-muted-foreground truncate">{player.description}</p>
+                      </div>
+                      <ExternalLink className="h-3 w-3 text-muted-foreground shrink-0" />
+                    </button>
+                  );
+                })}
+              </div>
 
               {/* Browser & System Options */}
               <div className="py-1 border-t border-border/50">
